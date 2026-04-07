@@ -1,4 +1,5 @@
 import Link from "next/link";
+import Image from "next/image";
 
 export default function Footer() {
   return (
@@ -7,16 +8,17 @@ export default function Footer() {
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-10">
           {/* Column 1: Brand */}
           <div>
-            <div className="flex items-center gap-2.5 mb-4">
-              <div className="w-9 h-9 bg-blue rounded-lg flex items-center justify-center">
-                <svg className="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 117.072 0l-.548.547A3.374 3.374 0 0014 18.469V19a2 2 0 11-4 0v-.531c0-.895-.356-1.754-.988-2.386l-.548-.547z" />
-                </svg>
-              </div>
-              <span className="font-bold text-lg tracking-tight">SporeCount</span>
+            <div className="mb-4">
+              <Image
+                src="/images/sporecount-full-logo.png"
+                alt="SporeCount - Smart Science. Safe Spaces. Powered by BRS Lab Services"
+                width={240}
+                height={100}
+                className="h-auto w-56 brightness-0 invert"
+              />
             </div>
             <p className="text-sm text-gray-400 mb-4">
-              AI-powered air quality testing for homes, inspectors, and agriculture. Next-day results you can trust.
+              Smart Science. Safe Spaces. Residential air testing through Sporecyte and proprietary agricultural pathogen monitoring.
             </p>
             <div className="text-sm text-gray-400 space-y-1">
               <p>windsorlab@brslab.com</p>
@@ -32,8 +34,7 @@ export default function Footer() {
             </h3>
             <ul className="space-y-3">
               {[
-                { href: "/home-air-testing", label: "Home Air Testing" },
-                { href: "/aq-professional", label: "AQ Professional" },
+                { href: "/home-air-testing", label: "Home Inspector (Canada)" },
                 { href: "/agricultural-testing", label: "Agricultural Testing" },
               ].map((link) => (
                 <li key={link.href}>
@@ -76,7 +77,17 @@ export default function Footer() {
               </li>
               <li>
                 <a
-                  href="https://app.sporecyte.com"
+                  href="https://sporecyte.com"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="text-sm text-gray-400 hover:text-white transition-colors"
+                >
+                  Sporecyte (Technology Partner)
+                </a>
+              </li>
+              <li>
+                <a
+                  href="https://sporecount-agri-app.vercel.app/login"
                   target="_blank"
                   rel="noopener noreferrer"
                   className="text-sm text-gray-400 hover:text-white transition-colors"
@@ -100,7 +111,7 @@ export default function Footer() {
               </li>
               <li>
                 <a
-                  href="https://app.sporecyte.com"
+                  href="https://sporecount-agri-app.vercel.app/login"
                   target="_blank"
                   rel="noopener noreferrer"
                   className="text-sm text-gray-400 hover:text-white transition-colors"

@@ -43,7 +43,7 @@ function HeroSection() {
               Become a Partner
             </a>
             <a
-              href="https://app.sporecyte.com"
+              href="https://sporecount-agri-app.vercel.app/login"
               target="_blank"
               rel="noopener noreferrer"
               className="inline-flex items-center justify-center px-6 py-3 bg-white/10 text-white font-semibold rounded-lg hover:bg-white/15 transition-colors border border-white/20"

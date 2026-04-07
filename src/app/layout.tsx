@@ -11,34 +11,42 @@ const inter = Inter({
 
 export const metadata: Metadata = {
   title: {
-    default: "SporeCount | AI-Powered Air Quality Testing",
+    default: "SporeCount | Smart Science. Safe Spaces.",
     template: "%s | SporeCount",
   },
   description:
-    "AI-powered air quality testing for homes, inspectors, and agriculture. Next-day results. 182 contaminants identified. Lab-certified analysis powered by Sporecyte AI.",
+    "Smart Science. Safe Spaces. Residential air testing through Sporecyte and proprietary agricultural pathogen monitoring. Powered by BRS Lab Services.",
   metadataBase: new URL("https://sporecount.com"),
+  icons: {
+    icon: [
+      { url: "/icon-192.png", sizes: "192x192", type: "image/png" },
+    ],
+    apple: [
+      { url: "/apple-icon.png", sizes: "180x180", type: "image/png" },
+    ],
+  },
   openGraph: {
     type: "website",
     locale: "en_US",
     url: "https://sporecount.com",
     siteName: "SporeCount",
-    title: "SporeCount | AI-Powered Air Quality Testing",
+    title: "SporeCount | Smart Science. Safe Spaces.",
     description:
-      "AI-powered air quality testing for homes, inspectors, and agriculture. Next-day results. 182 contaminants identified.",
+      "Residential air testing through Sporecyte and proprietary agricultural pathogen monitoring. Powered by BRS Lab Services.",
     images: [
       {
         url: "/og-image.png",
         width: 1200,
         height: 630,
-        alt: "SporeCount - AI-Powered Air Quality Testing",
+        alt: "SporeCount - Smart Science. Safe Spaces.",
       },
     ],
   },
   twitter: {
     card: "summary_large_image",
-    title: "SporeCount | AI-Powered Air Quality Testing",
+    title: "SporeCount | Smart Science. Safe Spaces.",
     description:
-      "AI-powered air quality testing for homes, inspectors, and agriculture. Next-day results you can trust.",
+      "Residential air testing through Sporecyte and proprietary agricultural pathogen monitoring. Powered by BRS Lab Services.",
     images: ["/og-image.png"],
   },
 };
