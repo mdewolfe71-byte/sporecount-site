@@ -132,12 +132,12 @@ export default function Footer() {
               &copy; {new Date().getFullYear()} SporeCount — A BRS Lab Services Brand. All rights reserved.
             </p>
             <div className="flex items-center gap-4">
-              <a href="#" className="text-xs text-gray-500 hover:text-gray-300 transition-colors">
+              <Link href="/privacy-policy" className="text-xs text-gray-500 hover:text-gray-300 transition-colors">
                 Privacy Policy
-              </a>
-              <a href="#" className="text-xs text-gray-500 hover:text-gray-300 transition-colors">
+              </Link>
+              <Link href="/terms-of-service" className="text-xs text-gray-500 hover:text-gray-300 transition-colors">
                 Terms &amp; Conditions
-              </a>
+              </Link>
             </div>
           </div>
           <p className="mt-4 text-xs text-gray-600 max-w-3xl">
