@@ -1,5 +1,4 @@
 import type { Metadata } from "next";
-import { CheckCircle, Package, Star } from "lucide-react";
 
 export const metadata: Metadata = {
   title: "Professional Air Sampling Supplies | SporeCount",
@@ -12,7 +11,7 @@ const products = [
     id: "pump-kit",
     name: "Sporecount Professional Air Sampling Pump Kit",
     badge: "Revised for 2025!",
-    badgeColor: "bg-green text-white",
+    badgeClass: "bg-green text-white",
     price: "$299.00 CAD",
     priceNote: "Complete kit",
     description:
@@ -36,7 +35,7 @@ const products = [
     id: "cassette-single",
     name: "AirTrap XL Air Sampling Cassette – Individual",
     badge: null,
-    badgeColor: "",
+    badgeClass: "",
     price: "$6.50 CAD",
     priceNote: "Per cassette",
     description:
@@ -53,7 +52,7 @@ const products = [
     id: "cassette-24pack",
     name: "AirTrap XL Air Sampling Cassette – 24 Pack",
     badge: "Best Value",
-    badgeColor: "bg-blue text-white",
+    badgeClass: "bg-blue text-white",
     price: "$146.00 CAD",
     priceNote: "Box of 24 cassettes",
     description:
@@ -68,6 +67,22 @@ const products = [
   },
 ];
 
+function CheckIcon() {
+  return (
+    <svg className="h-4 w-4 text-green mt-0.5 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+    </svg>
+  );
+}
+
+function BoxIcon() {
+  return (
+    <svg className="h-4 w-4 text-blue mt-0.5 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4" />
+    </svg>
+  );
+}
+
 function HeroSection() {
   return (
     <section className="relative bg-navy overflow-hidden">
@@ -75,8 +90,7 @@ function HeroSection() {
         <div
           className="absolute inset-0"
           style={{
-            backgroundImage:
-              "radial-gradient(circle at 30% 30%, #3B5BDB 1px, transparent 1px)",
+            backgroundImage: "radial-gradient(circle at 30% 30%, #3B5BDB 1px, transparent 1px)",
             backgroundSize: "50px 50px",
           }}
         />
@@ -135,8 +149,7 @@ function ProductsSection() {
                     {product.name}
                   </h3>
                   {product.badge && (
-                    <span className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-sm font-semibold shrink-0 ${product.badgeColor}`}>
-                      {product.badge === "Best Value" && <Star className="h-3.5 w-3.5" />}
+                    <span className={`inline-flex items-center px-3 py-1 rounded-full text-sm font-semibold shrink-0 ${product.badgeClass}`}>
                       {product.badge}
                     </span>
                   )}
@@ -152,7 +165,7 @@ function ProductsSection() {
                     <ul className="space-y-2">
                       {product.features.map((f) => (
                         <li key={f} className="flex items-start gap-2.5">
-                          <CheckCircle className="h-4 w-4 text-green mt-0.5 shrink-0" />
+                          <CheckIcon />
                           <span className="text-sm text-text-secondary">{f}</span>
                         </li>
                       ))}
@@ -167,7 +180,7 @@ function ProductsSection() {
                       <ul className="space-y-2">
                         {product.included.map((item) => (
                           <li key={item} className="flex items-start gap-2.5">
-                            <Package className="h-4 w-4 text-blue mt-0.5 shrink-0" />
+                            <BoxIcon />
                             <span className="text-sm text-text-secondary">{item}</span>
                           </li>
                         ))}
