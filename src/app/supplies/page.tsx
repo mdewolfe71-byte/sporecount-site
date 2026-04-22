@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import Image from "next/image";
 
 export const metadata: Metadata = {
   title: "Professional Air Sampling Supplies | SporeCount",
@@ -12,6 +13,7 @@ const products = [
     name: "Sporecount Professional Air Sampling Pump Kit",
     badge: "Revised for 2025!",
     badgeClass: "bg-green text-white",
+    image: "/images/air-pump-kit.png",
     price: "$299.00 CAD",
     priceNote: "Complete kit",
     description:
@@ -36,6 +38,7 @@ const products = [
     name: "AirTrap XL Air Sampling Cassette – Individual",
     badge: null,
     badgeClass: "",
+    image: "/images/single-airtrap.png",
     price: "$6.50 CAD",
     priceNote: "Per cassette",
     description:
@@ -53,6 +56,7 @@ const products = [
     name: "AirTrap XL Air Sampling Cassette – 24 Pack",
     badge: "Best Value",
     badgeClass: "bg-blue text-white",
+    image: "/images/single-airtrap.png",
     price: "$146.00 CAD",
     priceNote: "Box of 24 cassettes",
     description:
@@ -154,6 +158,18 @@ function ProductsSection() {
                     </span>
                   )}
                 </div>
+
+                {product.image && (
+                  <div className="mb-6 rounded-xl overflow-hidden bg-gray-50 border border-light-border flex items-center justify-center p-6">
+                    <Image
+                      src={product.image}
+                      alt={product.name}
+                      width={480}
+                      height={300}
+                      className="object-contain max-h-64 w-auto"
+                    />
+                  </div>
+                )}
 
                 <p className="text-text-secondary mb-6">{product.description}</p>
 
