@@ -36,6 +36,7 @@ export default function Footer() {
               {[
                 { href: "/home-air-testing", label: "Home Inspector (Canada)" },
                 { href: "/agricultural-testing", label: "Agricultural Testing" },
+                { href: "/supplies", label: "Supplies" },
               ].map((link) => (
                 <li key={link.href}>
                   <Link

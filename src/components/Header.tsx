@@ -9,6 +9,7 @@ const navLinks = [
   { href: "/", label: "Home" },
   { href: "/home-air-testing", label: "Home Inspector (Canada)" },
   { href: "/agricultural-testing", label: "Agricultural Testing" },
+  { href: "/supplies", label: "Supplies" },
 ];
 
 export default function Header() {
