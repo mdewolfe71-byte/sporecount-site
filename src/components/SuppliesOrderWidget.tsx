@@ -6,10 +6,21 @@
 // this calls back into the main sporecount-agri-app backend (one Stripe
 // integration, one place secrets live — see the roadmap) which creates and
 // emails a real Stripe Invoice. This component never sees a Stripe key or
-// any price: it only ever sends { email, items: [{ productId, quantity }] },
-// and the backend looks the real price up server-side from its own fixed
-// catalog (backend/backend/services/suppliesCatalog.js) — so even if this
-// code were tampered with to send a fake amount, the backend would ignore it.
+// any price it can actually charge: it only ever sends
+// { email, items: [{ productId, quantity }, ...] }, and the backend looks
+// the real price up server-side from its own fixed catalog
+// (backend/backend/services/suppliesCatalog.js) — so even if this code were
+// tampered with to send a fake amount, the backend would ignore it. The
+// per-line and running-total dollar figures shown below are for display
+// only (parsed from the same price strings the page already renders) and
+// are never sent anywhere — the actual charge always comes from the
+// backend's own catalog.
+//
+// A real multi-item cart: a customer can add several different products
+// (and adjust quantity per line) before submitting one order/one invoice,
+// not just a single product+quantity picker. The backend route already
+// accepted an `items` array from the start (up to 10 distinct line items,
+// qty 1-100 each, 500 total) — this was previously only ever sending one.
 //
 // Needs NEXT_PUBLIC_API_BASE_URL set to the sporecount-agri-app backend's
 // public URL (e.g. https://sporecount-agri-app-production.up.railway.app or
@@ -24,6 +35,11 @@ export type SuppliesProduct = {
   price: string;
 };
 
+type CartLine = {
+  productId: string;
+  quantity: number;
+};
+
 type FormStatus = "idle" | "submitting" | "success" | "error";
 
 type OrderContextValue = {
@@ -33,6 +49,9 @@ type OrderContextValue = {
   closeOrderForm: () => void;
 };
 
+const MAX_LINE_ITEMS = 10;
+const MAX_QUANTITY_PER_ITEM = 100;
+
 const OrderContext = createContext<OrderContextValue | null>(null);
 
 function useOrderContext(): OrderContextValue {
@@ -41,6 +60,18 @@ function useOrderContext(): OrderContextValue {
     throw new Error("useOrderContext must be used within SuppliesOrderProvider");
   }
   return ctx;
+}
+
+// Display-only: pulls the first dollar-looking number out of a price
+// string like "$299.00 CAD" so the cart can show a running total. Never
+// sent to the backend, and falls back to 0 (shown as "—") rather than
+// guessing if a price string doesn't parse, so a formatting change on the
+// page can't silently show a wrong total.
+function parseDisplayPrice(price: string): number | null {
+  const match = price.replace(/,/g, "").match(/[\d]+(?:\.\d+)?/);
+  if (!match) return null;
+  const n = Number(match[0]);
+  return Number.isFinite(n) ? n : null;
 }
 
 export function SuppliesOrderProvider({
@@ -73,8 +104,9 @@ export function SuppliesOrderProvider({
 }
 
 // Drop-in replacement for the old mailto: "Order This Item" / "Email Us to
-// Order" anchors — same visual slot, same className prop, just opens the
-// shared modal instead of composing an email.
+// Order" anchors — same visual slot, same className prop. Opens the shared
+// cart modal with this product already added (qty 1) when a productId is
+// given, or empty when opened from a generic "Order Supplies" button.
 export function OrderTriggerButton({
   productId,
   className,
@@ -95,16 +127,60 @@ export function OrderTriggerButton({
 function OrderModal({ initialProductId }: { initialProductId?: string }) {
   const { products, closeOrderForm } = useOrderContext();
 
-  const [productId, setProductId] = useState<string>(initialProductId ?? products[0]?.id ?? "");
-  const [quantity, setQuantity] = useState<number>(1);
+  const [cart, setCart] = useState<CartLine[]>(() =>
+    initialProductId ? [{ productId: initialProductId, quantity: 1 }] : []
+  );
+  const [addProductId, setAddProductId] = useState<string>(
+    products.find((p) => p.id !== initialProductId)?.id ?? products[0]?.id ?? ""
+  );
   const [email, setEmail] = useState<string>("");
   const [status, setStatus] = useState<FormStatus>("idle");
   const [errorMessage, setErrorMessage] = useState<string>("");
 
-  const selectedProduct = products.find((p) => p.id === productId);
+  const productById = useMemo(() => new Map(products.map((p) => [p.id, p])), [products]);
+
+  const total = cart.reduce((sum, line) => {
+    const product = productById.get(line.productId);
+    const unit = product ? parseDisplayPrice(product.price) : null;
+    return unit === null ? sum : sum + unit * line.quantity;
+  }, 0);
+  const totalIsComplete = cart.every((line) => {
+    const product = productById.get(line.productId);
+    return product ? parseDisplayPrice(product.price) !== null : false;
+  });
+
+  function addLine(productId: string) {
+    if (!productId) return;
+    setCart((prev) => {
+      const existing = prev.find((l) => l.productId === productId);
+      if (existing) {
+        return prev.map((l) =>
+          l.productId === productId
+            ? { ...l, quantity: Math.min(MAX_QUANTITY_PER_ITEM, l.quantity + 1) }
+            : l
+        );
+      }
+      if (prev.length >= MAX_LINE_ITEMS) return prev;
+      return [...prev, { productId, quantity: 1 }];
+    });
+  }
+
+  function updateQuantity(productId: string, quantity: number) {
+    const clamped = Math.max(1, Math.min(MAX_QUANTITY_PER_ITEM, quantity || 1));
+    setCart((prev) => prev.map((l) => (l.productId === productId ? { ...l, quantity: clamped } : l)));
+  }
+
+  function removeLine(productId: string) {
+    setCart((prev) => prev.filter((l) => l.productId !== productId));
+  }
 
   async function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault();
+    if (cart.length === 0) {
+      setStatus("error");
+      setErrorMessage("Add at least one item to your order first.");
+      return;
+    }
     setStatus("submitting");
     setErrorMessage("");
 
@@ -123,7 +199,7 @@ function OrderModal({ initialProductId }: { initialProductId?: string }) {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           email: email.trim(),
-          items: [{ productId, quantity }],
+          items: cart.map(({ productId, quantity }) => ({ productId, quantity })),
         }),
       });
 
@@ -147,9 +223,11 @@ function OrderModal({ initialProductId }: { initialProductId?: string }) {
     }
   }
 
+  const availableToAdd = products.filter((p) => !cart.some((l) => l.productId === p.id));
+
   return (
     <div
-      className="fixed inset-0 z-[100] flex items-center justify-center bg-black/50 px-4"
+      className="fixed inset-0 z-[100] flex items-center justify-center bg-black/50 px-4 py-8 overflow-y-auto"
       role="dialog"
       aria-modal="true"
       aria-labelledby="supplies-order-heading"
@@ -157,7 +235,7 @@ function OrderModal({ initialProductId }: { initialProductId?: string }) {
         if (e.target === e.currentTarget) closeOrderForm();
       }}
     >
-      <div className="w-full max-w-md rounded-2xl bg-white p-6 sm:p-8 shadow-xl">
+      <div className="w-full max-w-lg rounded-2xl bg-white p-6 sm:p-8 shadow-xl my-auto">
         <div className="flex items-start justify-between gap-4 mb-6">
           <h2 id="supplies-order-heading" className="text-xl font-bold text-navy">
             {status === "success" ? "Order received" : "Order supplies"}
@@ -189,42 +267,97 @@ function OrderModal({ initialProductId }: { initialProductId?: string }) {
             </button>
           </div>
         ) : (
-          <form onSubmit={handleSubmit} className="space-y-4">
+          <form onSubmit={handleSubmit} className="space-y-5">
+            {/* Cart lines */}
             <div>
-              <label htmlFor="supplies-order-product" className="block text-sm font-medium text-navy mb-1.5">
-                Product
-              </label>
-              <select
-                id="supplies-order-product"
-                value={productId}
-                onChange={(e) => setProductId(e.target.value)}
-                required
-                className="w-full rounded-lg border border-light-border px-3 py-2.5 text-sm text-navy focus:outline-none focus:ring-2 focus:ring-blue/40"
-              >
-                {products.map((p) => (
-                  <option key={p.id} value={p.id}>
-                    {p.name} — {p.price}
-                  </option>
-                ))}
-              </select>
+              <h3 className="text-sm font-semibold text-navy uppercase tracking-wider mb-2">Your order</h3>
+              {cart.length === 0 ? (
+                <p className="text-sm text-text-muted italic">No items added yet.</p>
+              ) : (
+                <ul className="space-y-2">
+                  {cart.map((line) => {
+                    const product = productById.get(line.productId);
+                    if (!product) return null;
+                    return (
+                      <li
+                        key={line.productId}
+                        className="flex items-center gap-3 rounded-lg border border-light-border px-3 py-2.5"
+                      >
+                        <div className="flex-1 min-w-0">
+                          <p className="text-sm font-medium text-navy truncate">{product.name}</p>
+                          <p className="text-xs text-text-muted">{product.price} each</p>
+                        </div>
+                        <input
+                          type="number"
+                          min={1}
+                          max={MAX_QUANTITY_PER_ITEM}
+                          step={1}
+                          value={line.quantity}
+                          onChange={(e) => updateQuantity(line.productId, Number(e.target.value))}
+                          aria-label={`Quantity for ${product.name}`}
+                          className="w-16 rounded-md border border-light-border px-2 py-1.5 text-sm text-navy text-center focus:outline-none focus:ring-2 focus:ring-blue/40"
+                        />
+                        <button
+                          type="button"
+                          onClick={() => removeLine(line.productId)}
+                          aria-label={`Remove ${product.name}`}
+                          className="text-text-muted hover:text-red-600 p-1"
+                        >
+                          <svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                          </svg>
+                        </button>
+                      </li>
+                    );
+                  })}
+                </ul>
+              )}
+
+              {cart.length > 0 && (
+                <p className="mt-2 text-sm text-text-secondary text-right">
+                  Estimated total:{" "}
+                  <span className="font-semibold text-navy">
+                    {totalIsComplete ? `$${total.toFixed(2)}` : "—"}
+                  </span>
+                  <span className="text-xs text-text-muted"> (confirmed on your invoice)</span>
+                </p>
+              )}
             </div>
 
-            <div>
-              <label htmlFor="supplies-order-quantity" className="block text-sm font-medium text-navy mb-1.5">
-                Quantity
-              </label>
-              <input
-                id="supplies-order-quantity"
-                type="number"
-                min={1}
-                max={100}
-                step={1}
-                value={quantity}
-                onChange={(e) => setQuantity(Math.max(1, Math.min(100, Number(e.target.value) || 1)))}
-                required
-                className="w-full rounded-lg border border-light-border px-3 py-2.5 text-sm text-navy focus:outline-none focus:ring-2 focus:ring-blue/40"
-              />
-            </div>
+            {/* Add another item */}
+            {availableToAdd.length > 0 && cart.length < MAX_LINE_ITEMS && (
+              <div className="flex items-end gap-2">
+                <div className="flex-1">
+                  <label htmlFor="supplies-add-product" className="block text-sm font-medium text-navy mb-1.5">
+                    Add an item
+                  </label>
+                  <select
+                    id="supplies-add-product"
+                    value={addProductId}
+                    onChange={(e) => setAddProductId(e.target.value)}
+                    className="w-full rounded-lg border border-light-border px-3 py-2.5 text-sm text-navy focus:outline-none focus:ring-2 focus:ring-blue/40"
+                  >
+                    {availableToAdd.map((p) => (
+                      <option key={p.id} value={p.id}>
+                        {p.name} — {p.price}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => addLine(addProductId)}
+                  className="inline-flex items-center justify-center px-4 py-2.5 bg-blue/10 text-blue text-sm font-semibold rounded-lg hover:bg-blue/20 transition-colors"
+                >
+                  Add
+                </button>
+              </div>
+            )}
+            {cart.length >= MAX_LINE_ITEMS && (
+              <p className="text-xs text-text-muted">
+                You&apos;ve reached the limit of {MAX_LINE_ITEMS} different items per order — contact us directly for a larger order.
+              </p>
+            )}
 
             <div>
               <label htmlFor="supplies-order-email" className="block text-sm font-medium text-navy mb-1.5">
@@ -240,16 +373,9 @@ function OrderModal({ initialProductId }: { initialProductId?: string }) {
                 className="w-full rounded-lg border border-light-border px-3 py-2.5 text-sm text-navy focus:outline-none focus:ring-2 focus:ring-blue/40"
               />
               <p className="mt-1.5 text-xs text-text-muted">
-                We&apos;ll send your invoice here — it&apos;s how Stripe knows who to bill.
+                We&apos;ll send one invoice here for everything in your order — it&apos;s how Stripe knows who to bill.
               </p>
             </div>
-
-            {selectedProduct && (
-              <p className="text-sm text-text-secondary">
-                Ordering <span className="font-semibold text-navy">{quantity}</span> ×{" "}
-                {selectedProduct.name} ({selectedProduct.price} each)
-              </p>
-            )}
 
             {status === "error" && (
               <p role="alert" className="text-sm text-red-600">
@@ -259,7 +385,7 @@ function OrderModal({ initialProductId }: { initialProductId?: string }) {
 
             <button
               type="submit"
-              disabled={status === "submitting"}
+              disabled={status === "submitting" || cart.length === 0}
               className="w-full inline-flex items-center justify-center px-5 py-2.5 bg-blue text-white text-sm font-semibold rounded-lg hover:bg-blue-dark transition-colors disabled:opacity-60 disabled:cursor-not-allowed"
             >
               {status === "submitting" ? "Submitting…" : "Request invoice"}
