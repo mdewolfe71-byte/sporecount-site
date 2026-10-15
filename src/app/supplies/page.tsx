@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import Image from "next/image";
+import { SuppliesOrderProvider, OrderTriggerButton } from "@/components/SuppliesOrderWidget";
 
 export const metadata: Metadata = {
   title: "Professional Air Sampling Supplies | SporeCount",
@@ -115,12 +116,9 @@ function HeroSection() {
             All products are designed for precision, reliability, and ease of use.
           </p>
           <div className="mt-10">
-            <a
-              href="mailto:windsorlab@brslab.com?subject=Supplies Order Inquiry"
-              className="inline-flex items-center justify-center px-6 py-3 bg-blue text-white font-semibold rounded-lg hover:bg-blue-dark transition-colors"
-            >
-              Email Us to Order
-            </a>
+            <OrderTriggerButton className="inline-flex items-center justify-center px-6 py-3 bg-blue text-white font-semibold rounded-lg hover:bg-blue-dark transition-colors">
+              Order Supplies
+            </OrderTriggerButton>
           </div>
         </div>
       </div>
@@ -210,12 +208,12 @@ function ProductsSection() {
                     <span className="text-3xl font-bold text-green">{product.price}</span>
                     <span className="ml-2 text-sm text-text-muted">{product.priceNote}</span>
                   </div>
-                  <a
-                    href={`mailto:windsorlab@brslab.com?subject=Order Inquiry: ${encodeURIComponent(product.name)}`}
+                  <OrderTriggerButton
+                    productId={product.id}
                     className="inline-flex items-center justify-center px-5 py-2.5 bg-blue text-white text-sm font-semibold rounded-lg hover:bg-blue-dark transition-colors"
                   >
                     Order This Item
-                  </a>
+                  </OrderTriggerButton>
                 </div>
               </div>
             </div>
@@ -234,27 +232,28 @@ function CTASection() {
           Ready to Order?
         </h2>
         <p className="text-lg text-gray-300 mb-8">
-          Contact us directly to place your order or for any questions about our products.
-          We&apos;ll respond promptly to process your order and answer any questions.
+          Place your order below and we&apos;ll send you a Stripe invoice by email — pay it to complete
+          your order. Questions? We&apos;ll respond promptly to anything you send our way.
         </p>
-        <a
-          href="mailto:windsorlab@brslab.com?subject=Supplies Order Inquiry"
-          className="inline-flex items-center justify-center px-8 py-4 bg-blue text-white font-semibold rounded-lg hover:bg-blue-dark transition-colors text-lg"
-        >
-          Email Us to Order
-        </a>
-        <p className="mt-4 text-sm text-gray-500">windsorlab@brslab.com</p>
+        <OrderTriggerButton className="inline-flex items-center justify-center px-8 py-4 bg-blue text-white font-semibold rounded-lg hover:bg-blue-dark transition-colors text-lg">
+          Order Supplies
+        </OrderTriggerButton>
+        <p className="mt-4 text-sm text-gray-500">
+          Questions? Email us at windsorlab@brslab.com
+        </p>
       </div>
     </section>
   );
 }
 
 export default function SuppliesPage() {
+  const orderProducts = products.map((p) => ({ id: p.id, name: p.name, price: p.price }));
+
   return (
-    <>
+    <SuppliesOrderProvider products={orderProducts}>
       <HeroSection />
       <ProductsSection />
       <CTASection />
-    </>
+    </SuppliesOrderProvider>
   );
 }
