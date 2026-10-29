@@ -22,6 +22,10 @@
 // accepted an `items` array from the start (up to 10 distinct line items,
 // qty 1-100 each, 500 total) — this was previously only ever sending one.
 //
+// Two ways to finish: "Request invoice" (above) or "Pay now by card", which
+// calls POST /api/public/supplies-checkout and redirects to a Stripe-hosted
+// payment page (same server-side catalog and price rules).
+//
 // Needs NEXT_PUBLIC_API_BASE_URL set to the sporecount-agri-app backend's
 // public URL (e.g. https://sporecount-agri-app-production.up.railway.app or
 // similar) — see .env.example at the repo root. That's a Vercel project
@@ -135,6 +139,7 @@ function OrderModal({ initialProductId }: { initialProductId?: string }) {
   );
   const [email, setEmail] = useState<string>("");
   const [status, setStatus] = useState<FormStatus>("idle");
+  const [action, setAction] = useState<"invoice" | "pay">("invoice");
   const [errorMessage, setErrorMessage] = useState<string>("");
 
   const productById = useMemo(() => new Map(products.map((p) => [p.id, p])), [products]);
@@ -181,6 +186,7 @@ function OrderModal({ initialProductId }: { initialProductId?: string }) {
       setErrorMessage("Add at least one item to your order first.");
       return;
     }
+    setAction("invoice");
     setStatus("submitting");
     setErrorMessage("");
 
@@ -216,6 +222,55 @@ function OrderModal({ initialProductId }: { initialProductId?: string }) {
       setStatus("success");
     } catch {
       // Network failure, CORS, DNS, etc — still a failure, not a success.
+      setStatus("error");
+      setErrorMessage(
+        "We couldn't reach the order service. Please check your connection and try again, or email windsorlab@brslab.com."
+      );
+    }
+  }
+
+  // "Pay now by card": the backend builds a Stripe-hosted payment page from its
+  // own catalog and returns only the URL; we send the browser there. Email is
+  // optional here because Stripe asks for it on that page.
+  async function handlePayNow() {
+    if (cart.length === 0) {
+      setStatus("error");
+      setErrorMessage("Add at least one item to your order first.");
+      return;
+    }
+    setAction("pay");
+    setStatus("submitting");
+    setErrorMessage("");
+
+    const apiBaseUrl = process.env.NEXT_PUBLIC_API_BASE_URL;
+    if (!apiBaseUrl) {
+      setStatus("error");
+      setErrorMessage(
+        "Online payment isn't configured yet on this site. Please request an invoice instead, or email windsorlab@brslab.com."
+      );
+      return;
+    }
+
+    try {
+      const response = await fetch(`${apiBaseUrl}/api/public/supplies-checkout`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          email: email.trim() || undefined,
+          items: cart.map(({ productId, quantity }) => ({ productId, quantity })),
+        }),
+      });
+      const data = await response.json().catch(() => null);
+      if (!response.ok || !data?.url) {
+        setStatus("error");
+        setErrorMessage(
+          data?.error || "We couldn't start your payment. Please try again, or request an invoice instead."
+        );
+        return;
+      }
+      // Leaving the page for Stripe — keep the "submitting" state until it unloads.
+      window.location.assign(data.url);
+    } catch {
       setStatus("error");
       setErrorMessage(
         "We couldn't reach the order service. Please check your connection and try again, or email windsorlab@brslab.com."
@@ -319,7 +374,7 @@ function OrderModal({ initialProductId }: { initialProductId?: string }) {
                   <span className="font-semibold text-navy">
                     {totalIsComplete ? `$${total.toFixed(2)}` : "—"}
                   </span>
-                  <span className="text-xs text-text-muted"> (confirmed on your invoice)</span>
+                  <span className="text-xs text-text-muted"> (final total confirmed at payment or on your invoice)</span>
                 </p>
               )}
             </div>
@@ -373,7 +428,7 @@ function OrderModal({ initialProductId }: { initialProductId?: string }) {
                 className="w-full rounded-lg border border-light-border px-3 py-2.5 text-sm text-navy focus:outline-none focus:ring-2 focus:ring-blue/40"
               />
               <p className="mt-1.5 text-xs text-text-muted">
-                We&apos;ll send one invoice here for everything in your order — it&apos;s how Stripe knows who to bill.
+                Needed if you want an invoice — we&apos;ll send one here for everything in your order. If you pay by card instead, you can leave this blank and enter it on the payment page.
               </p>
             </div>
 
@@ -384,12 +439,23 @@ function OrderModal({ initialProductId }: { initialProductId?: string }) {
             )}
 
             <button
-              type="submit"
+              type="button"
+              onClick={handlePayNow}
               disabled={status === "submitting" || cart.length === 0}
               className="w-full inline-flex items-center justify-center px-5 py-2.5 bg-blue text-white text-sm font-semibold rounded-lg hover:bg-blue-dark transition-colors disabled:opacity-60 disabled:cursor-not-allowed"
             >
-              {status === "submitting" ? "Submitting…" : "Request invoice"}
+              {status === "submitting" && action === "pay" ? "Taking you to secure payment…" : "Pay now by card"}
             </button>
+            <button
+              type="submit"
+              disabled={status === "submitting" || cart.length === 0}
+              className="w-full inline-flex items-center justify-center px-5 py-2.5 border border-blue text-blue text-sm font-semibold rounded-lg hover:bg-blue/5 transition-colors disabled:opacity-60 disabled:cursor-not-allowed"
+            >
+              {status === "submitting" && action === "invoice" ? "Submitting…" : "Request an invoice instead"}
+            </button>
+            <p className="text-xs text-text-muted text-center">
+              Card payments are handled by Stripe — we never see your card number. You&apos;ll enter your shipping address on the payment page.
+            </p>
           </form>
         )}
       </div>
