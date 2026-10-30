@@ -146,6 +146,8 @@ function OrderModal({ initialProductId }: { initialProductId?: string }) {
   const [status, setStatus] = useState<FormStatus>("idle");
   const [action, setAction] = useState<"invoice" | "pay">("invoice");
   const [errorMessage, setErrorMessage] = useState<string>("");
+  // true when the lab prepares the invoice (shipping and taxes) and emails it, rather than it being sent at once
+  const [invoiceDraft, setInvoiceDraft] = useState<boolean>(false);
 
   const productById = useMemo(() => new Map(products.map((p) => [p.id, p])), [products]);
 
@@ -224,6 +226,8 @@ function OrderModal({ initialProductId }: { initialProductId?: string }) {
         return;
       }
 
+      const ok = await response.json().catch(() => null);
+      setInvoiceDraft(ok?.draft === true);
       setStatus("success");
     } catch {
       // Network failure, CORS, DNS, etc — still a failure, not a success.
@@ -315,8 +319,9 @@ function OrderModal({ initialProductId }: { initialProductId?: string }) {
         {status === "success" ? (
           <div>
             <p className="text-text-secondary">
-              Thanks! Check your email ({email.trim()}) for an invoice from Stripe — pay it from that email
-              to complete your order.
+              {invoiceDraft
+                ? `Thanks! We have your order. We will email your invoice to ${email.trim()} shortly, with shipping and taxes added. Pay it from that email to complete your order.`
+                : `Thanks! Check your email (${email.trim()}) for an invoice from Stripe — pay it from that email to complete your order.`}
             </p>
             <button
               type="button"
@@ -469,7 +474,7 @@ function OrderModal({ initialProductId }: { initialProductId?: string }) {
             <p className="text-xs text-text-muted text-center">
               {CARD_CHECKOUT_ENABLED
                 ? "Card payments are handled by Stripe — we never see your card number. You\u2019ll enter your shipping address on the payment page."
-                : "We\u2019ll email you an invoice for your order and you can pay it from that email."}
+                : "We\u2019ll prepare an invoice for your order, with shipping and taxes added, and email it to you."}
             </p>
           </form>
         )}
