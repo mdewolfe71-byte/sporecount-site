@@ -53,6 +53,11 @@ type OrderContextValue = {
   closeOrderForm: () => void;
 };
 
+// "Pay now by card" is hidden unless NEXT_PUBLIC_SUPPLIES_CARD_CHECKOUT=true is set at build time. It is off
+// for now (the card page has no tax or shipping line and prices vary by client); orders are invoiced. The
+// backend refuses card checkout on its own too (SUPPLIES_CARD_CHECKOUT_ENABLED), so this is only the UI.
+const CARD_CHECKOUT_ENABLED = process.env.NEXT_PUBLIC_SUPPLIES_CARD_CHECKOUT === "true";
+
 const MAX_LINE_ITEMS = 10;
 const MAX_QUANTITY_PER_ITEM = 100;
 
@@ -374,7 +379,7 @@ function OrderModal({ initialProductId }: { initialProductId?: string }) {
                   <span className="font-semibold text-navy">
                     {totalIsComplete ? `$${total.toFixed(2)}` : "—"}
                   </span>
-                  <span className="text-xs text-text-muted"> (final total confirmed at payment or on your invoice)</span>
+                  <span className="text-xs text-text-muted">{CARD_CHECKOUT_ENABLED ? " (final total confirmed at payment or on your invoice)" : " (before shipping and taxes; your invoice has the final total)"}</span>
                 </p>
               )}
             </div>
@@ -428,7 +433,9 @@ function OrderModal({ initialProductId }: { initialProductId?: string }) {
                 className="w-full rounded-lg border border-light-border px-3 py-2.5 text-sm text-navy focus:outline-none focus:ring-2 focus:ring-blue/40"
               />
               <p className="mt-1.5 text-xs text-text-muted">
-                Needed if you want an invoice — we&apos;ll send one here for everything in your order. If you pay by card instead, you can leave this blank and enter it on the payment page.
+                {CARD_CHECKOUT_ENABLED
+                  ? "Needed if you want an invoice — we\u2019ll send one here for everything in your order. If you pay by card instead, you can leave this blank and enter it on the payment page."
+                  : "We\u2019ll send an invoice here for everything in your order."}
               </p>
             </div>
 
@@ -438,23 +445,31 @@ function OrderModal({ initialProductId }: { initialProductId?: string }) {
               </p>
             )}
 
-            <button
-              type="button"
-              onClick={handlePayNow}
-              disabled={status === "submitting" || cart.length === 0}
-              className="w-full inline-flex items-center justify-center px-5 py-2.5 bg-blue text-white text-sm font-semibold rounded-lg hover:bg-blue-dark transition-colors disabled:opacity-60 disabled:cursor-not-allowed"
-            >
-              {status === "submitting" && action === "pay" ? "Taking you to secure payment…" : "Pay now by card"}
-            </button>
+            {CARD_CHECKOUT_ENABLED && (
+              <button
+                type="button"
+                onClick={handlePayNow}
+                disabled={status === "submitting" || cart.length === 0}
+                className="w-full inline-flex items-center justify-center px-5 py-2.5 bg-blue text-white text-sm font-semibold rounded-lg hover:bg-blue-dark transition-colors disabled:opacity-60 disabled:cursor-not-allowed"
+              >
+                {status === "submitting" && action === "pay" ? "Taking you to secure payment…" : "Pay now by card"}
+              </button>
+            )}
             <button
               type="submit"
               disabled={status === "submitting" || cart.length === 0}
-              className="w-full inline-flex items-center justify-center px-5 py-2.5 border border-blue text-blue text-sm font-semibold rounded-lg hover:bg-blue/5 transition-colors disabled:opacity-60 disabled:cursor-not-allowed"
+              className={
+                CARD_CHECKOUT_ENABLED
+                  ? "w-full inline-flex items-center justify-center px-5 py-2.5 border border-blue text-blue text-sm font-semibold rounded-lg hover:bg-blue/5 transition-colors disabled:opacity-60 disabled:cursor-not-allowed"
+                  : "w-full inline-flex items-center justify-center px-5 py-2.5 bg-blue text-white text-sm font-semibold rounded-lg hover:bg-blue-dark transition-colors disabled:opacity-60 disabled:cursor-not-allowed"
+              }
             >
-              {status === "submitting" && action === "invoice" ? "Submitting…" : "Request an invoice instead"}
+              {status === "submitting" && action === "invoice" ? "Submitting…" : CARD_CHECKOUT_ENABLED ? "Request an invoice instead" : "Request an invoice"}
             </button>
             <p className="text-xs text-text-muted text-center">
-              Card payments are handled by Stripe — we never see your card number. You&apos;ll enter your shipping address on the payment page.
+              {CARD_CHECKOUT_ENABLED
+                ? "Card payments are handled by Stripe — we never see your card number. You\u2019ll enter your shipping address on the payment page."
+                : "We\u2019ll email you an invoice for your order and you can pay it from that email."}
             </p>
           </form>
         )}
